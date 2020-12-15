@@ -342,6 +342,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                             "undefined instruction ("+Binary.intToHexString(statement.getBinaryStatement())+")",
                             Exceptions.RESERVED_INSTRUCTION_EXCEPTION);
                      }
+
+                    Coprocessor0.incrementTimer(statement);
+
                      // THIS IS WHERE THE INSTRUCTION EXECUTION IS ACTUALLY SIMULATED!
                      instruction.getSimulationCode().simulate(statement);
                   	

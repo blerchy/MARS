@@ -1,5 +1,7 @@
    package mars.mips.hardware;
    import mars.Globals;
+   import mars.ProcessingException;
+   import mars.ProgramStatement;
    import java.util.*;
 
 /*
@@ -40,6 +42,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       /** Coprocessor register names
 		 */
 		public static final int VADDR  = 8;
+		public static final int COUNT  = 9; // see incrementTimer()
+		public static final int COMPARE= 11; // see incrementTimer()
 		public static final int STATUS = 12;
 	   public static final int CAUSE  = 13;
 		public static final int EPC    = 14;
@@ -51,6 +55,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 		
       private static Register [] registers = 
           { new Register("$8 (vaddr)", 8, 0),  
+            new Register("$9 (count)", 9, 0), // see incrementTimer()
+            new Register("$11 (compare)", 11, 0), // see incrementTimer()
             new Register("$12 (status)", 12, DEFAULT_STATUS_VALUE),
          	new Register("$13 (cause)", 13, 0),  
          	new Register("$14 (epc)", 14, 0)
@@ -211,5 +217,38 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             registers[i].deleteObserver(observer);
          }
       }
+
+    /**
+     * Implement an On-CPU timer by incrementing the Count register with each
+     * instruction execution (to approximate ticking on each clock cycle) and
+     * comparing with the Compare register. When they equal, raise a timer
+     * exception. The Count register silently overflows back to 0x00000000 when
+     * it reaches 0xffffffff.
+     * Added 2020-12-01 by Matt Lebl mlebl@uvic.ca
+     */
+    public static void incrementTimer(ProgramStatement ps) throws ProcessingException {
+        int causeValue = getValue(CAUSE);
+
+        // if the coprocessor cause DC bit (27) is set, don't increment the counter
+        if ((causeValue & 0x8000000) != 0) {
+            return;
+        }
+
+        int statusValue = getValue(STATUS);
+        int compareValue = getValue(COMPARE);
+        int countValue = getValue(COUNT) + 1;
+
+        updateRegister(COUNT, countValue);
+
+        if (countValue == compareValue) {
+            // should only raise an interrupt if IE (interrupt enable) = 1 and EXL (exception level) = 0
+            if ((statusValue & 0x1) == 1        // 0th bit: IE
+                && (statusValue & 0x2) == 0) {  // 1st bit: EXL
+               // timer interrupt sets cause register bit TI (30th) to 1
+               updateRegister(CAUSE, causeValue | 0x40000000);
+               throw new ProcessingException(ps, "Timer interrupt", 0);
+            }
+        }
+    }
 
    }

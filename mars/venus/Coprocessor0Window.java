@@ -190,8 +190,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             	// Ideally, use the same highlighting technique as for Text Segment -- see
             	// AddressCellRenderer class in DataSegmentWindow.java.
                this.highlighting = true;
-               this.highlightCellForRegister((Register)observable);
-               Globals.getGui().getRegistersPane().setSelectedComponent(this);
+               if (!access.getRegisterName().equals("$9 (count)")) {
+                   // Don't highlight count register (modified every instruction, would get annoying.) Matt Lebl 2020-12-01
+                   this.highlightCellForRegister((Register) observable);
+                   Globals.getGui().getRegistersPane().setSelectedComponent(this);
+               }
             }
          }
       }
